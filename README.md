@@ -18,6 +18,6 @@ https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 
 * [project_report.Rmd](./project_report.Rmd): R markdown document for course project report.        
 * [project_report.html](./project_report.html): Compiled html file for course project report.   
-* [pml_training.csv](./pml_training.csv): Data csv files for training sets.        
-* [pml_testing.csv](./pml_testing.csv): Data csv files for testing sets.  
+* [pml-training.csv](./pml-training.csv): Data csv files for training sets.        
+* [pml-testing.csv](./pml-testing.csv): Data csv files for testing sets.  
 * [Practical Machine Learning Course Project.pdf] (./Practical Machine Learning Course Project.pdf): Compile pdf file for course project report. 
