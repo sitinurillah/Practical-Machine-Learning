@@ -1,0 +1,136 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Siti Nurillah Binti Mohd Fadzil"
+date: "January 29, 2016"
+output: html_document
+---
+
+##Data 
+
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+##Reading and Cleaning Data
+
+Start with reading both training and testing instances. 
+
+
+```{r}
+library(data.table)
+library(caret)
+library(randomForest)
+library(foreach)
+library(rpart)
+library(rpart.plot)
+library(corrplot)
+library(ggplot2)
+```
+
+```{r}
+#read training data
+training_data <- read.csv("./pml-training.csv", na.strings=c("#DIV/0!"," ", "", "NA", "NAs", "NULL"))
+#read test data
+testing_data <- read.csv("./pml-testing.csv", na.strings=c("#DIV/0!"," ", "", "NA", "NAs", "NULL"))
+```
+
+Columns with NAs will be removed. Besides that highly correlated variables and variables with 0 (or approx to 0) variance will be removed. 
+
+#Cleaning data
+
+```{r}
+clean_training <- training_data[, -which(names(training_data) %in% c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window"))]
+
+#remove columns with NAs
+clean_training = clean_training[, colSums(is.na(clean_training)) == 0]
+
+#remove variables with 0 or near to 0 variance
+zero_variance =nearZeroVar(clean_training[sapply(clean_training, is.numeric)], saveMetrics=TRUE)
+clean_training = clean_training[, zero_variance[, 'nzv'] == 0]
+
+correlation_matrix <- cor(na.omit(clean_training[sapply(clean_training, is.numeric)]))
+
+dim(correlation_matrix)
+correlationmatrixdegreesoffreedom <- expand.grid(row = 1:52, col = 1:52)
+ #this returns the correlation matrix in matrix format
+correlationmatrixdegreesoffreedom$correlation <- as.vector(correlation_matrix)
+removehighcorrelation <- findCorrelation(correlation_matrix, cutoff = .7, verbose = TRUE)
+#this removes highly correlated variables (in psychometric theory .7+ correlation is a high correlation)
+clean_training <- clean_training[, -removehighcorrelation] 
+
+```
+
+
+```{r}
+
+for(i in c(8:ncol(clean_training)-1)) {clean_training[,i] = as.numeric(as.character(clean_training[,i]))}
+
+for(i in c(8:ncol(testing_data)-1)) {testing_data[,i] = as.numeric(as.character(testing_data[,i]))}
+```
+
+The cleaned dataset will only consist of complete columns. For a lighter dataset, user name, timestamps and windows will be removed.
+
+```{r}
+#drop blank column
+featureset <- colnames(clean_training[colSums(is.na(clean_training)) == 0])[-(1:7)]
+modeldata <- clean_training[featureset]
+
+#cleansed data to build model
+featureset
+```
+
+
+
+##Cross-Validation
+#Split the sample in two samples. This is to divide training and testing for cross-validation.
+
+```{r}
+idx <- createDataPartition(modeldata$classe, p=0.6, list=FALSE )
+training <- modeldata[idx,]
+testing <- modeldata[-idx,]
+
+control <- trainControl(method="cv", 5)
+model <- train(classe ~ ., data=training, method="rf", trControl=control, ntree=250)
+model
+
+predict <- predict(model, testing)
+confusionMatrix(testing$classe, predict)
+
+accuracy <- postResample(predict, testing$classe)
+accuracy
+
+result <- predict(model, training[, -length(names(training))])
+result
+
+treeModel <- rpart(classe ~ ., data=clean_training, method="class")
+prp(treeModel) 
+```
+
+##Conclusions and Test Data Submit
+
+As can be seen from the confusion matrix the proposed model is very accurate. 
+
+Prepare the submission. (using COURSERA provided code)
+
+```{r, eval=FALSE}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+x <- evaluation_data
+x <- x[feature_set[feature_set!='classe']]
+answers <- predict(rf, newdata=x)
+
+answers
+
+pml_write_files(answers)
+```
